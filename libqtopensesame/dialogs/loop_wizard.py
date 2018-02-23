@@ -47,6 +47,7 @@ class loop_wizard(base_dialog):
 		try:
 			self._dm = pickle.loads(cfg.loop_wizard)
 			assert(isinstance(self._dm, DataMatrix))
+			assert(hasattr(self._dm._rowid, u'clone'))
 		except:
 			self._dm = DataMatrix(length=0)
 		self._qdm = QDataMatrix(self._dm)
@@ -66,5 +67,6 @@ class loop_wizard(base_dialog):
 		retval = base_dialog.exec_(self)
 		if retval == QtWidgets.QDialog.Rejected:
 			return None
+		self._dm = self._qdm.dm
 		cfg.loop_wizard = pickle.dumps(self._dm)
 		return operations.fullfactorial(self._dm)

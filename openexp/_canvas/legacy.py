@@ -19,10 +19,11 @@ along with OpenSesame.  If not, see <http://www.gnu.org/licenses/>.
 
 from libopensesame.py3compat import *
 from pygame.locals import *
-import pygame
 import os
+import pygame
+import platform
 from libopensesame.exceptions import osexception
-from libopensesame import debug, misc
+from libopensesame import debug
 from openexp.backend import configurable
 from openexp._canvas import canvas
 from openexp._coordinates.legacy import legacy as legacy_coordinates
@@ -82,6 +83,8 @@ class legacy(canvas.canvas, legacy_coordinates):
 		self.antialias = True
 		self.surface = self.experiment.surface.copy()
 		self.clear()
+		if platform.system() == u'Darwin':
+			self.show = self._show_macos
 
 	def set_config(self, **cfg):
 
@@ -108,7 +111,24 @@ class legacy(canvas.canvas, legacy_coordinates):
 		self.experiment.last_shown_canvas = self.surface
 		pygame.display.flip()
 		return pygame.time.get_ticks()
+		
+	def _show_macos(self):
+		
+		"""
+		visible: False
+		
+		desc:
+			On Mac OS, the display is sometimes not refreshed unless there is
+			some interaction with the event loop. Therefor we implement this
+			hack which is only used on Mac OS.
+		"""
 
+		self.experiment.surface.blit(self.surface, (0, 0))
+		self.experiment.last_shown_canvas = self.surface
+		pygame.display.flip()
+		pygame.event.pump()
+		return pygame.time.get_ticks()
+		
 	@configurable
 	def clear(self):
 
@@ -155,28 +175,29 @@ class legacy(canvas.canvas, legacy_coordinates):
 			size = (w, h)
 			
 			surface = pygame.surface.Surface(
-			    [p + line_width for p in size],
-			    pygame.SRCALPHA).convert_alpha()
+				[p + line_width for p in size],
+				pygame.SRCALPHA).convert_alpha()
 			
 			pygame.draw.ellipse(surface, (0, 0, 0), pygame.Rect(
-			    (0, 0),
-			    [p + line_width for p in size]))
+				(0, 0),
+				[p + line_width for p in size]))
 			
 			tmp = pygame.surface.Surface(
-			    [p - line_width for p in size])
+				[p - line_width for p in size])
 			tmp.fill([0, 0, 0])
 			tmp.set_colorkey([255, 255, 255])
 
 			hole = pygame.surface.Surface(
-			    [p - line_width for p in size],
-			    pygame.SRCALPHA).convert_alpha()
+				[p - line_width for p in size],
+				pygame.SRCALPHA).convert_alpha()
 			
 			pygame.draw.ellipse(tmp, (255, 255, 255), pygame.Rect(
-			    (0, 0), [p - line_width for p in size]))
+				    (0, 0), [p - line_width for p in size]))
 			hole.blit(tmp, (0, 0))
 			surface.blit(hole, (line_width, line_width),
-			             special_flags=pygame.BLEND_RGBA_MIN)
-			surface.fill(self.color.backend_color, special_flags=pygame.BLEND_RGB_MAX)
+				special_flags=pygame.BLEND_RGBA_MIN)
+			surface.fill(self.color.backend_color,
+				special_flags=pygame.BLEND_RGB_MAX)
 			# The line_width affects the temp's surface size, so use it to correct the
 			# positioning when blitting.
 			self.surface.blit(surface, (x-line_width/2, y-line_width/2) )

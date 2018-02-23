@@ -142,6 +142,7 @@ class qtopensesame(QtWidgets.QMainWindow, base_component):
 			u'OpenSesame files (*.osexp *.opensesame.tar.gz *.opensesame)'
 
 		# Set the window message
+		self._read_only = False
 		self.window_message(_(u"New experiment"))
 
 		# Set the window icon
@@ -311,10 +312,6 @@ class qtopensesame(QtWidgets.QMainWindow, base_component):
 		group.add_option(u"--start-clean", action=u"store_true",
 			dest=u"start_clean", help=\
 			u"Do not load configuration and do not restore window geometry")
-		group.add_option(u"-p", u"--preload", action=u"store_true",
-			dest=u"preload", help=u"Preload Python modules")
-		group.add_option(u"--pylink", action=u"store_true", dest=u"pylink",
-			help=u"Load PyLink before PyGame (necessary for using the Eyelink plug-ins in non-dummy mode)")
 		group.add_option(u"--locale", action=u"store_true", dest=u"locale",
 			help=u"Specify localization")
 		group.add_option(u"--catch-translatables", action=u"store_true",
@@ -527,10 +524,12 @@ class qtopensesame(QtWidgets.QMainWindow, base_component):
 
 		if msg is not None:
 			self.window_msg = msg
+		flags = u''
 		if self.unsaved_changes:
-			self.setWindowTitle(self.window_msg + u' * - OpenSesame')
-		else:
-			self.setWindowTitle(self.window_msg + u' - OpenSesame')
+			flags += u' *'
+		if self.read_only:
+			flags += _(u' [read only]')
+		self.setWindowTitle(self.window_msg + u'%s - OpenSesame' % flags)
 
 	def update_overview_area(self):
 
@@ -749,6 +748,7 @@ class qtopensesame(QtWidgets.QMainWindow, base_component):
 		self.ui.tabwidget.open_general()
 		if add_to_recent:
 			self.current_path = path
+			self.read_only = not os.access(path, os.W_OK)
 			self.window_message(self.current_path)
 			self.update_recent_files()
 			cfg.default_logfile_folder = os.path.dirname(self.current_path)
@@ -854,6 +854,7 @@ class qtopensesame(QtWidgets.QMainWindow, base_component):
 			path += u'.osexp'
 		cfg.file_dialog_path = os.path.dirname(path)
 		self.current_path = path
+		self.read_only = False
 		cfg.default_logfile_folder = os.path.dirname(self.current_path)
 		self.save_file()
 
@@ -1051,3 +1052,24 @@ class qtopensesame(QtWidgets.QMainWindow, base_component):
 
 		_id = safe_decode(repr(QtWidgets.QApplication.instance()), enc=self.enc)
 		return _id
+
+	@property
+	def read_only(self):
+		
+		"""
+		desc:
+			Getter property for toggling the save action when setting.
+		"""
+						
+		return self._read_only
+		
+	@read_only.setter
+	def read_only(self, read_only):
+		
+		"""
+		desc:
+			Setter property for toggling the save action.
+		"""		
+		
+		self._read_only = read_only
+		self.ui.action_save.setEnabled(not read_only)
